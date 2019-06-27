@@ -1,0 +1,117 @@
+{ config, pkgs, ... }:
+
+{
+  imports = [ ./hardware-configuration.nix ];
+#  systemd.services.nix-daemon.environment = {
+#    https_proxy = "socks5://127.0.0.1:1080";
+#  };
+#  unstable = import <unstable> {
+#        config = {
+#            allowUnfree = true;
+#            allowUnsupportedSystem = true;
+#            allowBroken = true;
+#        };
+#  };
+
+  
+  services.fstrim = {
+    enable = true;
+    interval = "tuesday";  
+  };
+
+  nix.gc = {
+    automatic = true;
+    dates = "thursday";
+    options = "--delete-older-than 8d";
+  };
+
+  powerManagement.powertop.enable = true;
+
+  environment.systemPackages = with pkgs; [
+    fcitx-configtool 
+    wget
+    vim
+    docker
+    emacs 
+    git
+    shadowsocks-libev 
+    python37Full
+  ];
+  
+  programs.mtr.enable = true;
+
+  nix.extraOptions = ''
+    keep-outputs = true
+    keep-derivations = true
+  '';
+
+  programs.ssh = {
+    startAgent = true;
+  };
+  programs.zsh.ohMyZsh.enable = true;
+  fonts.enableFontDir = true;
+
+  
+  ### Boot and kernel
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.timeout = 10;
+  boot.loader.efi.canTouchEfiVariables = true;
+  boot.kernelParams = [ "i915.fastboot=1" "quiet" ];
+
+  boot.kernel.sysctl = {
+    "vm.swappiness" = 5;
+    "vm.vfs_cache_pressure" = 50;
+  };
+  
+  hardware.cpu.intel.updateMicrocode = true;
+
+  ### Networking
+
+  networking.hostName = "miku";
+  networking.networkmanager.enable = true;
+
+  networking.firewall.allowedTCPPorts = [ 12345 5678 ];
+  networking.firewall.logRefusedConnections = true;
+
+  ### Users
+  users.defaultUserShell = pkgs.zsh;
+  users.users.miku = {
+    isNormalUser = true;
+    useDefaultShell = true;
+    uid = 1000;
+    extraGroups = [ "wheel" "vboxusers" "docker" ];
+  };
+
+  ### Misc
+
+  boot.earlyVconsoleSetup = true;
+  i18n.consoleKeyMap = "us";
+  i18n.defaultLocale = "en_US.UTF-8";
+
+  time.timeZone = "Asia/Shanghai";
+
+  sound.enable = true;
+  hardware.pulseaudio.enable = true;
+
+  nix.trustedUsers = [ "root" "miku" ];
+
+  # This value determines the NixOS release with which your system is to be
+  # compatible, in order to avoid breaking some software such as database
+  # servers. You should change this only after NixOS release notes say you
+  # should.
+
+  system.autoUpgrade.enable = true;
+  nixpkgs.config.allowUnsupportedSystem = true; 
+  nixpkgs.config.allowBroken = true; 
+  nixpkgs.config.allowUnfree = true;
+  virtualisation.docker.enable = true;
+
+  # ssh
+
+  services.sshd.enable = true;
+  boot.initrd.network.ssh.port = 5678;
+  boot.initrd.network.ssh.enable = true;
+  services.openssh.listenAddresses = [ { addr = "0.0.0.0"; port = 5678; }  ];  
+  system.stateVersion = "19.03"; # Did you read the comment?
+}
